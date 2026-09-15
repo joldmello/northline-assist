@@ -24,7 +24,18 @@ python seed.py
 python run.py
 ```
 
-Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). Chrome is required for the microphone; typing always works.
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). Chrome is required for the microphone; typing always works. Sample members and garages are also created automatically on first start if `data/` is empty.
+
+## Deploy on Render
+
+1. Push this repo to GitHub (already `origin` → `northline-assist`).
+2. In [Render](https://dashboard.render.com/), **New → Blueprint**, connect the repo. `render.yaml` fills in the web service.
+3. When prompted, paste `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey). Leave it blank and intake still runs with keyword fallbacks.
+4. After the first deploy, open `https://northline-assist.onrender.com/` (or the URL Render prints).
+
+Manual path if you skip the Blueprint: **New → Web Service**, Python, build `pip install -r requirements.txt`, start `gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --threads 4`. One worker is required because the CSV store is process-local.
+
+Free instances sleep after idle time. The CSV disk is ephemeral, so cases reset on a cold start; members and garages are re-seeded automatically.
 
 | Surface | URL |
 |---|---|

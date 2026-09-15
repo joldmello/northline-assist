@@ -20,10 +20,14 @@ from app.web.routes import web_bp
 
 
 def create_app(data_dir: str | None = None) -> Flask:
+    from seed import seed
+
     app = Flask(__name__)
     app.secret_key = Config.SECRET_KEY
 
-    db = Database(data_dir or Config.DATA_DIR)
+    resolved = data_dir or Config.DATA_DIR
+    seed(resolved)
+    db = Database(resolved)
     services = Services(db)
     app.config["services"] = services
 

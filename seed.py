@@ -83,17 +83,25 @@ GARAGES = [
 ]
 
 
+def seed(data_dir: str | Path | None = None, reset: bool = False) -> None:
+    path = Path(data_dir or Config.DATA_DIR)
+    if reset and path.exists():
+        shutil.rmtree(path)
+
+    db = Database(path)
+    if db.policyholders.all() and db.garages.all():
+        return
+
+    if not db.policyholders.all():
+        for person in POLICYHOLDERS:
+            db.policyholders.add(person)
+    if not db.garages.all():
+        for garage in GARAGES:
+            db.garages.add(garage)
+
+
 def main() -> None:
-    data_dir = Path(Config.DATA_DIR)
-    if data_dir.exists():
-        shutil.rmtree(data_dir)
-
-    db = Database(Config.DATA_DIR)
-    for person in POLICYHOLDERS:
-        db.policyholders.add(person)
-    for garage in GARAGES:
-        db.garages.add(garage)
-
+    seed(reset=True)
     print("Seeded Northline Assist sample data:")
     print(f"  policyholders={len(POLICYHOLDERS)}  garages={len(GARAGES)}")
     print("  Maya Chen      POL-1001  Standard  (active)")
