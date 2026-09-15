@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Member messages{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Member messages</h1>
+    <p class="lede">Stand-in for carrier SMS. Nothing goes to the member until a specialist Approves or Declines (or taps Send SMS).</p>
+  </div>
+</div>
+{% for m in messages %}
+<div class="card sms">
+  <p class="muted">to {{ m.to_phone }} · case #{{ m.case_id }} · {{ m.sent_at }} · {{ m.status }}</p>
+  <p class="sms-body">{{ m.body }}</p>
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">No messages yet. Finish a covered call and the member text will appear here.</p>
+</div>
+{% endfor %}
+{% endblock %}

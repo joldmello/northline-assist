@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Case {{ case.id }} · operations{% endblock %}
+{% block content %}
+<div class="split" data-case-id="{{ case.id }}">
+  <section>
+    <p class="muted"><a href="{{ url_for('web.ops') }}">All cases</a></p>
+    <h1>Case #{{ case.id }} <span id="status-pill" class="pill {{ case.status }}">{{ case.status }}</span></h1>
+    <p id="action-hint" class="banner">Specialist actions unlock after the coverage check.</p>
+    <div class="card">
+      <h3>Live transcript</h3>
+      <div id="transcript" class="transcript">
+        {% for m in case.transcript %}
+        <div class="msg {{ m.role }}"><span class="who">{{ m.role }}</span>{{ m.text }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  <aside>
+    <div class="card">
+      <h3>Member</h3>
+      {% if policyholder %}
+      <p><strong>{{ policyholder.name }}</strong><br />{{ policyholder.policy_number }} · {{ policyholder.policy_doc }} · {{ policyholder.status }}</p>
+      <p class="muted">Listed: {{ policyholder.listed_drivers }}<br />{{ policyholder.vehicle }}</p>
+      {% else %}
+      <p>Unknown caller — identify the policy before dispatch.</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h3>Extracted facts</h3>
+      <p class="muted">Structured fields taken from the conversation, not the raw transcript.</p>
+      <dl id="slots" class="slots">
+        <dt>Name</dt><dd data-slot="caller_name">{{ case.caller_name or "—" }}</dd>
+        <dt>Vehicle</dt><dd data-slot="vehicle">{{ case.vehicle or "—" }}</dd>
+        <dt>Location</dt><dd data-slot="location_text">{{ case.location_text or "—" }}</dd>
+        <dt>Issue</dt><dd data-slot="issue_type">{{ case.issue_type or "—" }}</dd>
+        <dt>Situation</dt><dd data-slot="situation">{{ case.situation or "—" }}</dd>
+        <dt>Listed driver</dt><dd data-slot="listed_driver">{{ case.listed_driver or "—" }}</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Coverage</h3>
+      <p id="cov-decision"><strong>{{ case.coverage_decision or "pending" }}</strong> <span class="muted" id="cov-conf">{{ case.coverage_confidence }}</span></p>
+      <p id="cov-rationale">{{ case.coverage_rationale }}</p>
+      <ul id="cov-cites">
+        {% for c in case.coverage_citations %}
+        <li><strong>{{ c.section }}</strong> — {{ c.quote }}</li>
+        {% endfor %}
+      </ul>
+      <p class="muted" id="human-note-view">{% if case.human_note %}Specialist note: {{ case.human_note }}{% endif %}</p>
+    </div>
+    <div class="card">
+      <h3>Next best action</h3>
+      <p id="nba"><strong>{{ case.action_type or "—" }}</strong></p>
+      <p id="nba-r" class="muted">{{ case.action_rationale }}</p>
+      {% if garage %}
+      <p id="nba-g">{{ garage.name }} · {{ garage.address }} · {{ garage.phone }}</p>
+      {% else %}
+      <p id="nba-g" class="muted">No garage selected.</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h3>Specialist actions</h3>
+      <p class="muted">SMS is always drafted, never auto-sent. Approve sends the draft and closes if covered. Decline redrafts a hold message, sends it, and closes. Override redrafts and does not close.</p>
+      <label class="field">Override to
+        <select id="override-decision">
+          <option value="covered">covered</option>
+          <option value="not_covered">not_covered</option>
+          <option value="needs_review">needs_review</option>
+        </select>
+      </label>
+      <input id="human-note" type="text" placeholder="Note required for override" />
+      <p id="action-error" class="flash error" hidden></p>
+      <div class="btn-row">
+        <button type="button" id="btn-override" class="secondary">Apply override</button>
+      </div>
+      <h3>Customer SMS</h3>
+      <textarea id="sms-draft" rows="4">{{ case.sms_draft }}</textarea>
+      <p class="muted" id="sms-sent">Sent: {{ case.sms_sent or "no" }}</p>
+      <div class="btn-row">
+        <button type="button" id="btn-send">Send SMS</button>
+        <button type="button" id="btn-approve" class="ok">Approve &amp; close</button>
+        <button type="button" id="btn-decline" class="danger">Decline &amp; close</button>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='observer.js') }}"></script>
+{% endblock %}

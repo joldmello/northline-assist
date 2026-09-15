@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Start a roadside request{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Start a roadside request</h1>
+    <p class="lede">Choose a member. Assist gathers the facts by voice or typed message. A specialist watches the operations board and owns the final decision.</p>
+  </div>
+  <span class="chip {{ 'ok' if llm_on else 'warn' }}">
+    {% if llm_on %}Assist online · Gemini{% else %}Local mode · no API key{% endif %}
+  </span>
+</div>
+
+<div class="grid">
+  {% for p in policyholders %}
+  <div class="card member">
+    <div class="member-top">
+      <div class="avatar">{{ p.name.split(' ')[0][0] }}{{ p.name.split(' ')[-1][0] }}</div>
+      <div>
+        <h2>{{ p.name }}</h2>
+        <p class="muted meta">{{ p.policy_number }}</p>
+      </div>
+    </div>
+    <p>
+      <span class="chip {{ 'ok' if p.status == 'active' else 'warn' }}">{{ p.status }}</span>
+      <span class="chip gold">
+        {% if p.policy_doc == 'roadside-plus' %}Plus
+        {% elif p.policy_doc == 'roadside-standard' %}Standard
+        {% elif p.policy_doc == 'lapsed-notice' %}No roadside
+        {% else %}{{ p.policy_doc }}{% endif %}
+      </span>
+    </p>
+    <p>{{ p.vehicle }}<br />{{ p.address }}</p>
+    <p class="muted">Listed drivers: {{ p.listed_drivers }}</p>
+    <form method="post" action="{{ url_for('web.ui_start') }}">
+      <input type="hidden" name="policyholder_id" value="{{ p.id }}" />
+      <button type="submit">Call as {{ p.name.split(' ')[0] }}</button>
+    </form>
+  </div>
+  {% endfor %}
+  <div class="card member ghost">
+    <div class="member-top">
+      <div class="avatar">?</div>
+      <div>
+        <h2>Unknown caller</h2>
+        <p class="muted meta">No policy on file</p>
+      </div>
+    </div>
+    <p class="muted">Coverage stops for a specialist until the member is identified.</p>
+    <form method="post" action="{{ url_for('web.ui_start') }}">
+      <button type="submit" class="secondary">Start without a member</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Example situations</h3>
+  <ul class="examples">
+    <li>
+      <strong>Maya Chen</strong> — listed driver, Standard<br />
+      <q>I have a flat tire on Piedmont near 10th. I’m the listed driver.</q>
+      <span class="muted"> → covered, mobile van, SMS drafted until Approve</span>
+    </li>
+    <li>
+      <strong>James Okonkwo</strong> — listed driver, Plus<br />
+      <q>I was in a fender-bender on Ponce in Decatur. I was driving. The F-150 won’t move.</q>
+      <span class="muted"> → covered tow, SMS drafted until Approve</span>
+    </li>
+    <li>
+      <strong>Maya Chen</strong> — brother driving<br />
+      <q>My brother Tom is driving and we have a dead battery on Piedmont.</q>
+      <span class="muted"> → not covered, SMS drafted until Decline</span>
+    </li>
+  </ul>
+  <p class="muted">Use Chrome for the microphone. Open <a href="{{ url_for('web.ops') }}">Operations</a> in a second window before you talk.</p>
+</div>
+{% endblock %}

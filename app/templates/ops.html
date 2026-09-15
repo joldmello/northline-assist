@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Operations board{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Operations</h1>
+    <p class="lede">Live roadside cases. Specialists approve, decline, or override. Assist never closes a denial on its own.</p>
+  </div>
+</div>
+<table id="case-table">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Status</th>
+      <th>Caller</th>
+      <th>Issue</th>
+      <th>Coverage</th>
+      <th>Action</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cases %}
+    <tr>
+      <td>{{ c.id }}</td>
+      <td><span class="pill {{ c.status }}">{{ c.status }}</span></td>
+      <td>{{ c.caller_name or "—" }}</td>
+      <td>{{ c.issue_type or "—" }}</td>
+      <td>{{ c.coverage_decision or "—" }}</td>
+      <td>{{ c.action_type or "—" }}</td>
+      <td><a href="{{ url_for('web.ops_detail', case_id=c.id) }}">Open</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">No cases yet. Start one from Members.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function refreshBoard() {
+    const res = await fetch("/api/cases");
+    if (!res.ok) return;
+    const rows = await res.json();
+    const tbody = document.querySelector("#case-table tbody");
+    if (!rows.length) return;
+    tbody.innerHTML = rows.map((row) => {
+      const c = row.case;
+      return `<tr>
+        <td>${c.id}</td>
+        <td><span class="pill ${c.status}">${c.status}</span></td>
+        <td>${c.caller_name || "—"}</td>
+        <td>${c.issue_type || "—"}</td>
+        <td>${c.coverage_decision || "—"}</td>
+        <td>${c.action_type || "—"}</td>
+        <td><a href="/ops/${c.id}">Open</a></td>
+      </tr>`;
+    }).join("");
+  }
+  setInterval(refreshBoard, 1000);
+</script>
+{% endblock %}

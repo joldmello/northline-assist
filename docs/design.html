@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Northline Assist — Design</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --gold:#e8a04b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--line); display: flex; gap: 1rem; flex-wrap: wrap; align-items: baseline; }
+    header strong { font-size: 1.1rem; }
+    header a { color: var(--accent); }
+    main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+    h1 { font-size: 1.8rem; margin: 0 0 .5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin: 1.2rem 0 .4rem; font-size: 1rem; color: var(--muted); }
+    .lede, p, li { color: var(--text); }
+    .lede { color: var(--muted); max-width: 46rem; }
+    .diagram { background: #0b1220; border: 1px solid var(--line); border-radius: 12px; padding: 1rem; overflow-x: auto; margin: .6rem 0 1rem; }
+    .cap { color: var(--gold); font-size: .9rem; margin: .4rem 0 0; }
+    svg text { font-family: system-ui, sans-serif; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .6rem 0 1rem; }
+    th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    code { font-family: ui-monospace, monospace; font-size: .85em; color: var(--accent); }
+    .mermaid { background: transparent; }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark",
+      sequence: { actorMargin: 16, messageMargin: 24, wrap: true, useMaxWidth: true },
+    });
+  </script>
+</head>
+<body>
+  <header>
+    <strong>Northline Assist</strong>
+    <span style="color:var(--muted)">design document</span>
+    <a href="prd.html">PRD</a>
+  </header>
+  <main>
+    <p style="color:var(--muted); font-size:.8rem; letter-spacing:.04em; text-transform:uppercase;">System design · Northline Mutual roadside</p>
+    <h1>Northline Assist — design</h1>
+    <p class="lede">System design for Northline Assist: as-is and to-be workflow, case state machine, architecture, and request sequences. Dispatch, taxi, and rental booking are out of scope for v1.</p>
+
+    <div class="diagram">
+      <p style="margin:0 0 .4rem;color:#94a3b8;font-size:.85rem;">Related documents</p>
+      <table>
+        <thead>
+          <tr><th>File</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>This page · <code>docs/design.html</code></td><td>Workflow, architecture, sequences, LLM boundaries</td></tr>
+          <tr><td><code>docs/prd.html</code> / <code>PRD.md</code></td><td>Product requirements (two pages when printed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>1. Purpose</h2>
+    <p>Northline agents today are the integration layer: they take facts from the caller, look up the policy, find a garage, and narrate next steps while the member waits. Assist automates those four boxes. A human specialist still owns denials and any override. The product does not dispatch a truck.</p>
+
+    <h2>2. As-is workflow</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 980 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="As-is workflow">
+        <rect x="10" y="50" width="170" height="80" rx="10" fill="#1e293b" stroke="#94a3b8"/>
+        <text x="95" y="84" text-anchor="middle" fill="#e2e8f0" font-size="13">Human intake</text>
+        <text x="95" y="104" text-anchor="middle" fill="#94a3b8" font-size="11">name · car · where</text>
+        <rect x="210" y="50" width="170" height="80" rx="10" fill="#1e293b" stroke="#94a3b8"/>
+        <text x="295" y="84" text-anchor="middle" fill="#e2e8f0" font-size="13">Manual coverage</text>
+        <text x="295" y="104" text-anchor="middle" fill="#94a3b8" font-size="11">search policy PDF</text>
+        <rect x="410" y="50" width="170" height="80" rx="10" fill="#1e293b" stroke="#94a3b8"/>
+        <text x="495" y="84" text-anchor="middle" fill="#e2e8f0" font-size="13">Next best action</text>
+        <text x="495" y="104" text-anchor="middle" fill="#94a3b8" font-size="11">search a garage</text>
+        <rect x="610" y="50" width="170" height="80" rx="10" fill="#1e293b" stroke="#94a3b8"/>
+        <text x="695" y="84" text-anchor="middle" fill="#e2e8f0" font-size="13">Talk the next step</text>
+        <text x="695" y="104" text-anchor="middle" fill="#94a3b8" font-size="11">still on the call</text>
+        <rect x="810" y="50" width="160" height="80" rx="10" fill="#1e293b" stroke="#64748b"/>
+        <text x="890" y="84" text-anchor="middle" fill="#94a3b8" font-size="13">Dispatch later</text>
+        <text x="890" y="104" text-anchor="middle" fill="#64748b" font-size="11">out of this product</text>
+        <path d="M180 90h30" stroke="#94a3b8" stroke-width="2"/>
+        <path d="M380 90h30" stroke="#94a3b8" stroke-width="2"/>
+        <path d="M580 90h30" stroke="#94a3b8" stroke-width="2"/>
+        <path d="M780 90h30" stroke="#64748b" stroke-width="2"/>
+      </svg>
+      <p class="cap">Figure 1. Every box is a person with a headset. Time is spent in all four; errors concentrate in coverage and garage selection.</p>
+    </div>
+
+    <h2>3. Target workflow</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 980 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Target workflow">
+        <rect x="10" y="40" width="170" height="90" rx="10" fill="#164e63" stroke="#38bdf8"/>
+        <text x="95" y="74" text-anchor="middle" fill="#38bdf8" font-size="13">Voice intake</text>
+        <text x="95" y="94" text-anchor="middle" fill="#e2e8f0" font-size="11">extract facts</text>
+        <rect x="210" y="40" width="170" height="90" rx="10" fill="#3a2c18" stroke="#e8a04b"/>
+        <text x="295" y="74" text-anchor="middle" fill="#e8a04b" font-size="13">Coverage + cites</text>
+        <text x="295" y="94" text-anchor="middle" fill="#e2e8f0" font-size="11">rules first, then LLM</text>
+        <rect x="410" y="40" width="170" height="90" rx="10" fill="#163330" stroke="#5ec8c0"/>
+        <text x="495" y="74" text-anchor="middle" fill="#5ec8c0" font-size="13">Tow vs mobile</text>
+        <text x="495" y="94" text-anchor="middle" fill="#e2e8f0" font-size="11">haversine garage</text>
+        <rect x="610" y="40" width="170" height="90" rx="10" fill="#163224" stroke="#5cb87a"/>
+        <text x="695" y="74" text-anchor="middle" fill="#5cb87a" font-size="13">SMS + specialist</text>
+        <text x="695" y="94" text-anchor="middle" fill="#e2e8f0" font-size="11">human sends SMS</text>
+        <rect x="810" y="40" width="160" height="90" rx="10" fill="#1e293b" stroke="#64748b"/>
+        <text x="890" y="74" text-anchor="middle" fill="#94a3b8" font-size="13">Dispatch / taxi</text>
+        <text x="890" y="94" text-anchor="middle" fill="#64748b" font-size="11">after this product</text>
+        <text x="490" y="175" text-anchor="middle" fill="#94a3b8" font-size="12">gathering → assessing → recommending? → notifying → awaiting_human → closed</text>
+        <text x="490" y="197" text-anchor="middle" fill="#e8a04b" font-size="12">recommending runs only when coverage is covered. The model does not pick the next box.</text>
+      </svg>
+      <p class="cap">Figure 2. SMS is always drafted, never auto-sent. Approve sends the coverage text; Decline sends the hold text. A specialist must close every case.</p>
+    </div>
+
+    <h2>4. Case states</h2>
+    <table>
+      <thead>
+        <tr><th>State</th><th>Who acts</th><th>Specialist buttons</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>gathering</code></td><td>Voice agent fills extracted facts</td><td>Locked</td></tr>
+        <tr><td><code>assessing</code></td><td>CoverageService</td><td>Locked</td></tr>
+        <tr><td><code>recommending</code></td><td>DispatchService — only if covered</td><td>Locked</td></tr>
+        <tr><td><code>notifying</code></td><td>NotifyService drafts SMS; does not send</td><td>Locked</td></tr>
+        <tr><td><code>awaiting_human</code></td><td>Specialist</td><td>Override, Send SMS, Approve (if covered), Decline</td></tr>
+        <tr><td><code>closed_covered</code> / <code>closed_declined</code></td><td>Done</td><td>Locked</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. How voice becomes text</h2>
+    <p>Flask never receives audio. The laptop microphone is handled entirely in Chrome. Gemini only ever sees a text string, the same as if the member had typed.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Member
+  participant Chrome as Chrome browser
+  participant STT as Web Speech API
+  participant UI as voice.js
+  participant API as Flask POST /utterance
+  participant LLM as Gemini Flash
+
+  Member->>Chrome: click mic and speak
+  Chrome->>STT: audio from the microphone
+  Note over STT: Built into Chrome. Not our server. Not Gemini.
+  STT-->>Chrome: plain text e.g. I have a flat tire
+  Chrome->>UI: onresult transcript
+  UI->>API: JSON { text: "I have a flat tire" }
+  API->>LLM: extract facts from that text
+  LLM-->>API: name, vehicle, location, issue, listed driver
+  API-->>UI: next question
+  opt Speak replies checked
+    UI->>Chrome: speechSynthesis.speak
+    Chrome-->>Member: spoken reply
+  end
+      </pre>
+      <p class="cap">Figure 3. Speech-to-text is Chrome’s Web Speech API. The type box is the same path with the STT step skipped. Use Chrome; Firefox/Safari often have no usable SpeechRecognition.</p>
+    </div>
+    <p><strong>Extracted facts</strong> (jargon: “slots”) are the structured fields we fill from that text: caller name, vehicle, location, issue type, listed driver, short situation. The transcript is the raw sentences. The fact panel is the form those sentences get turned into so coverage can run without re-reading the chat.</p>
+
+    <h2>6. Architecture</h2>
+    <p>Two diagrams. First: who talks to the app. Second: what one HTTP request does inside Flask. Operations is not on the member’s request; it polls the same CSV row every second.</p>
+
+    <h3>6.1 Who talks to whom</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  Member -->|STT text or typed text| CustomerUI[Customer page]
+  Specialist -->|poll and review actions| OpsUI[Operations page]
+  CustomerUI --> Flask[Flask on port 8000]
+  OpsUI --> Flask
+  Flask -->|JSON for talk and coverage| Gemini[Gemini Flash]
+  Flask --> Files[CSV plus policy markdown]
+      </pre>
+      <p class="cap">Figure 4. Two browsers, one Flask process. Gemini is an internal JSON call, not a chat window for the member.</p>
+    </div>
+
+    <h3>6.2 What happens inside Flask</h3>
+    <p>Routes only parse HTTP and call <code>CaseService</code>. That class is the only place status may change. Four collaborators each do one job.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  Routes[web and api routes] --> CaseSvc[CaseService]
+  CaseSvc --> Conv[Conversation]
+  CaseSvc --> Cov[Coverage]
+  CaseSvc --> Dsp[Dispatch]
+  CaseSvc --> Nfy[Notify]
+  Conv -->|JSON next question plus facts| Gemini[Gemini Flash]
+  Cov -->|JSON coverage after rules| Gemini
+  Cov --> Policy[policy markdown]
+  Dsp --> Garages[garages.csv]
+  Nfy --> SmsFile[sms.csv]
+  CaseSvc --> Cases[cases.csv]
+      </pre>
+      <p class="cap">Figure 5. Dispatch and Notify never call Gemini. Conversation and Coverage do.</p>
+    </div>
+    <table>
+      <thead>
+        <tr><th>HTTP</th><th>Method</th><th>Status after</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>POST /api/cases</code></td><td><code>start</code></td><td><code>gathering</code></td></tr>
+        <tr><td><code>POST /api/cases/{id}/utterance</code></td><td><code>add_utterance</code></td><td>stays <code>gathering</code></td></tr>
+        <tr><td><code>POST /api/cases/{id}/assess</code></td><td><code>assess</code></td><td><code>assessing</code> then <code>recommending</code> only if covered, then <code>notifying</code>, then <code>awaiting_human</code></td></tr>
+        <tr><td><code>POST .../override</code></td><td><code>override</code> (note required)</td><td>stays <code>awaiting_human</code>; SMS redrafted, not sent</td></tr>
+        <tr><td><code>POST .../approve</code></td><td><code>approve</code> (covered only)</td><td>sends drafted SMS, then <code>closed_covered</code></td></tr>
+        <tr><td><code>POST .../decline</code></td><td><code>decline</code></td><td><code>closed_declined</code> and sends the held SMS</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Sequence diagrams</h2>
+    <p>The specialist console is omitted from the arrows below. For the whole case it runs <code>GET /api/cases/{id}</code> every second and reads the last CSV write. It is not in the member’s call stack.</p>
+
+    <h3>7.1 Intake — every case, status stays gathering</h3>
+    <p>Repeats until <strong>Finish call — run coverage</strong>. If there is no Gemini key, Conversation still returns extracted facts and a next question; the rest of the product is unchanged.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Customer UI
+  participant API as CaseService
+  participant Talk as Conversation
+  participant LLM as Gemini Flash
+  participant DB as cases.csv
+
+  Member->>UI: Start call
+  UI->>API: POST /api/cases
+  API->>DB: insert gathering
+  API-->>UI: greeting
+
+  loop until Finish call
+    Member->>UI: speak or type
+    UI->>API: POST /utterance
+    API->>Talk: reply(case, text)
+    alt GEMINI_API_KEY set
+      Talk->>LLM: transcript to JSON
+      LLM-->>Talk: next question plus facts
+    else offline
+      Talk-->>Talk: keyword facts
+    end
+    Talk-->>API: assistant_message and facts
+    API->>DB: save, still gathering
+    API-->>UI: speak reply
+  end
+      </pre>
+      <p class="cap">Figure 6. Intake does not run coverage, garage, or SMS. Specialist buttons stay locked.</p>
+    </div>
+
+    <h3>7.2 Covered — Maya (mobile) or James (tow)</h3>
+    <p>Same sequence. Dispatch is the only fork: flat/battery/lockout → mobile (Maya → Midtown Mobile Repair). Collision/engine on Plus → tow (James → Decatur Auto Care). Standard collision is not this path; that is 7.3.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Customer UI
+  participant API as CaseService
+  participant Cov as Coverage
+  participant LLM as Gemini Flash
+  participant Pol as policy.md
+  participant Dsp as Dispatch
+  participant Gar as garages.csv
+  participant Nfy as Notify
+  participant DB as cases.csv
+  actor Spec as Specialist
+
+  Member->>UI: Finish call
+  UI->>API: POST /assess
+  API->>DB: assessing
+  API->>Cov: assess(case)
+  Cov->>Cov: hard rules
+  Cov->>Pol: retrieve sections
+  Cov->>LLM: excerpts to JSON
+  LLM-->>Cov: covered plus citations
+  Note over Cov: Hard not_covered wins over Gemini.
+  Cov-->>API: covered
+  API->>DB: recommending
+  API->>Dsp: recommend(case)
+  Dsp->>Gar: capability plus haversine
+  Dsp-->>API: mobile_repair or tow plus garage
+  Note over Dsp: No LLM.
+  API->>DB: notifying
+  API->>Nfy: draft SMS only
+  Note over Nfy: sms_sent stays no
+  API->>DB: awaiting_human
+  Spec->>API: POST /approve
+  API->>Nfy: send drafted SMS
+  API->>DB: closed_covered
+      </pre>
+      <p class="cap">Figure 7. Covered: garage is chosen, SMS is drafted, then Approve sends it and closes. Decline is still available if the specialist disagrees.</p>
+    </div>
+
+    <h3>7.3 Not covered or needs review — unlisted driver, lapsed, unknown caller</h3>
+    <p>Examples: Maya with “my brother is driving”; Derek lapsed; Start without a member. Dispatch is skipped. SMS is drafted and not sent. Same as 7.2 until coverage returns not_covered.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Customer UI
+  participant API as CaseService
+  participant Cov as Coverage
+  participant Dsp as Dispatch
+  participant Nfy as Notify
+  participant DB as cases.csv
+  actor Spec as Specialist
+
+  Member->>UI: Finish call
+  UI->>API: POST /assess
+  API->>Cov: assess(case)
+  Cov->>Cov: hard rule
+  Note over Cov: unlisted or lapsed = not_covered. No member = needs_review.
+  Cov-->>API: not_covered or needs_review
+  API--xDsp: skip garage
+  API->>Nfy: draft SMS only
+  Note over Nfy: sms_sent stays no
+  API->>DB: awaiting_human, action none
+  alt confirm denial
+    Spec->>API: POST /decline
+    API->>Nfy: send held SMS
+    API->>DB: closed_declined
+  else change the decision
+    Spec->>API: POST /override
+    Note over API: Figure 9. Does not close.
+  end
+      </pre>
+      <p class="cap">Figure 8. Approve is disabled until the decision is covered. The model never closes this path.</p>
+    </div>
+
+    <h3>7.4 Override — rewrite the decision, still do not close</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Spec as Specialist
+  participant API as CaseService
+  participant Dsp as Dispatch
+  participant Nfy as Notify
+  participant DB as cases.csv
+
+  Note over Spec,DB: Only while awaiting_human. Note is required. No Gemini call.
+  Spec->>API: POST /override decision plus note
+  alt decision covered
+    API->>Dsp: recommend(case)
+    Dsp-->>API: garage
+    API->>Nfy: redraft SMS
+  else not_covered or needs_review
+    API->>Nfy: redraft hold SMS
+    Note over API: garage cleared
+  end
+  API->>DB: sms_sent no, still awaiting_human
+  Spec->>API: POST /approve or /decline
+  API->>DB: closed_covered or closed_declined
+      </pre>
+      <p class="cap">Figure 9. Override is a specialist write. Closing is a second click.</p>
+    </div>
+
+    <h2>8. Where the LLM is used</h2>
+    <table>
+      <thead>
+        <tr><th>Step</th><th>LLM?</th><th>What it returns</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Voice intake (Figure 6)</td><td>Yes — Gemini Flash</td><td>Next spoken question + extracted facts. Offline keyword fallback if no API key. Audio was already text before this step (Figure 3).</td></tr>
+        <tr><td>Coverage (Figure 7–8)</td><td>Yes — after deterministic rules</td><td>Decision, citations, rationale, confidence. Hard exclusions cannot be overturned by the model.</td></tr>
+        <tr><td>Tow vs mobile + garage</td><td>No</td><td>Rule table + haversine over garages.csv.</td></tr>
+        <tr><td>SMS</td><td>No</td><td>Templates in NotifyService.</td></tr>
+        <tr><td>Override / close (Figure 9)</td><td>No</td><td>Human specialist only.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Human-in-the-loop</h2>
+    <ul>
+      <li>Every case: SMS is drafted and held. Approve sends the coverage text (covered only). Decline sends the hold/denial text.</li>
+      <li>not_covered / needs_review: Approve is disabled until a specialist overrides to covered.</li>
+      <li>Override redrafts SMS, sets <code>sms_sent=no</code>, and does not close.</li>
+      <li>Writes go through the Flask API, not through the model.</li>
+    </ul>
+
+    <h2>10. Out of scope for v1</h2>
+    <p>Telephony / IVR, photo damage models, dispatch write-back, taxi and rental booking, authentication, and multilingual support.</p>
+  </main>
+</body>
+</html>

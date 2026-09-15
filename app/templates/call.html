@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Voice agent · case {{ case.id }}{% endblock %}
+{% block content %}
+<div class="split" data-case-id="{{ case.id }}">
+  <section class="card">
+    <div class="page-head" style="margin-bottom:.8rem">
+      <div>
+        <h1>Voice agent</h1>
+        <p class="muted">Case #{{ case.id }}
+          {% if policyholder %}· {{ policyholder.name }} · {{ policyholder.policy_number }}{% else %}· unknown caller{% endif %}
+        </p>
+      </div>
+      <span class="chip {{ 'ok' if llm_on else 'warn' }}">{% if llm_on %}{{ llm_model }}{% else %}local mode{% endif %}</span>
+    </div>
+    <div id="transcript" class="transcript">
+      {% for m in case.transcript %}
+      <div class="msg {{ m.role }}"><span class="who">{{ m.role }}</span>{{ m.text }}</div>
+      {% endfor %}
+    </div>
+    <div class="voice-bar">
+      <button type="button" id="mic" class="mic">Hold to talk</button>
+      <label class="muted"><input type="checkbox" id="tts" checked /> Speak replies</label>
+    </div>
+    <form id="type-form" class="inline">
+      <input id="typed" type="text" placeholder="Or type what you would say…" autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+    <p id="voice-status" class="muted">Click the mic in Chrome. If the browser blocks it, type instead.</p>
+    <button type="button" id="assess" class="secondary">Finish call — check coverage</button>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h3>Extracted facts</h3>
+      <p class="muted">Fields filled from what the caller said.</p>
+      <dl id="slots" class="slots">
+        <dt>Name</dt><dd data-slot="caller_name">{{ case.caller_name or "—" }}</dd>
+        <dt>Vehicle</dt><dd data-slot="vehicle">{{ case.vehicle or "—" }}</dd>
+        <dt>Location</dt><dd data-slot="location_text">{{ case.location_text or "—" }}</dd>
+        <dt>Issue</dt><dd data-slot="issue_type">{{ case.issue_type or "—" }}</dd>
+        <dt>Listed driver</dt><dd data-slot="listed_driver">{{ case.listed_driver or "—" }}</dd>
+        <dt>Status</dt><dd data-slot="status">{{ case.status }}</dd>
+      </dl>
+    </div>
+    <div class="card" id="result-card" {% if not case.coverage_decision %}hidden{% endif %}>
+      <h3>What we told you</h3>
+      <p id="result-decision"><strong>{{ case.coverage_decision }}</strong></p>
+      <p id="result-action" class="muted">{{ case.action_rationale }}</p>
+      <p><a href="{{ url_for('web.inbox') }}">Open messages</a> · <a href="{{ url_for('web.ops_detail', case_id=case.id) }}">Operations view</a></p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='voice.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+.env
+
+# Keep local; do not publish
+docs/flow.html
+docs/demo.html
+docs/demo/
+scripts/record_demo.py
